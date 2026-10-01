@@ -1,5 +1,5 @@
 import type { BrandTheme, BrandTokens } from '../models/brandMirrorModels'
-import { INITIAL_TOKENS, THEME_PRESETS } from '../models/brandMirrorModels'
+import { THEME_PRESETS } from '../models/brandMirrorModels'
 
 const HEX_COLOR = /^#[0-9A-F]{6}$/i
 
@@ -11,9 +11,15 @@ export function isHexColor(value: string): boolean {
   return HEX_COLOR.test(value)
 }
 
-export function normalizeColor(value: string): string {
+/**
+ * 归一化 HEX 颜色：去除空白、统一大写、补全 # 前缀。
+ * 仅接受 6 位 HEX；不合规时返回 null，由调用方提示并退回上一个有效值，
+ * 绝不用默认色静默替换用户输入。
+ */
+export function normalizeColor(value: string): string | null {
   const candidate = value.trim().toUpperCase()
-  return isHexColor(candidate) ? candidate : INITIAL_TOKENS.primary
+  const withHash = candidate.startsWith('#') ? candidate : `#${candidate}`
+  return isHexColor(withHash) ? withHash : null
 }
 
 export function clampTokenValues(tokens: BrandTokens): BrandTokens {

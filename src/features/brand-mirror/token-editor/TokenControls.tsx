@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { normalizeColor } from '../domain/brandRules'
 import type { BrandMirrorSnapshot, BrandTheme } from '../models/brandMirrorModels'
 
 interface TokenControlsProps {
@@ -42,8 +44,7 @@ export function TokenControls({ snapshot, onThemeChange, onColorChange, onScaleC
         <div className="section-label"><span>品牌色</span><span className="muted">HEX / 6 位</span></div>
         <div className="color-fields">
           <ColorField label="主色" value={snapshot.tokens.primary} onChange={(value) => onColorChange('primary', value)} />
-          <ColorField label="辅助色" value={snapshot.tokens.secondary} onChange={(value) => onColorChange('secondary', value)} />
-        </div>
+          <ColorField label="辅助色" value={snapshot.tokens.secondary} onChange={(value) => onColorChange('secondary', value)} />        </div>
         <div className={`contrast-note ${snapshot.contrastWarning ? 'warning' : ''}`}>
           <span className="contrast-icon">◐</span>
           <span>对比度 <strong>{snapshot.contrastRatio.toFixed(1)}:1</strong> · {snapshot.contrastWarning ? '建议提高对比度' : '适合界面使用'}</span>
@@ -60,7 +61,58 @@ export function TokenControls({ snapshot, onThemeChange, onColorChange, onScaleC
 }
 
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="color-field"><span>{label}</span><div className="color-input"><input aria-label={label} type="color" value={value} onChange={(event) => onChange(event.target.value)} /><input aria-label={`${label} HEX`} value={value} onChange={(event) => onChange(event.target.value)} /></div></label>
+  // value 是已确认的有效值；draft 是用户正在编辑、尚未确认的内容。
+  // 编辑过程中绝不用外部值覆盖输入框，避免两个颜色串在一起。
+  const [draft, setDraft] = useState(value)
+  const [error, setError] = useState<string | null>(null)
+
+  // 外部值变化（主题切换、恢复默认、取色器选择）且当前不在编辑时，同步草稿
+  useEffect(() => {
+    setDraft(value)
+    setError(null)
+  }, [value])
+
+  const commit = (raw: string) => {
+    const normalized = normalizeColor(raw)
+    if (!normalized) {
+      setError('请输入 6 位 HEX 颜色，如 #2A6BFF')
+      setDraft(value) // 退回上一个有效值
+      return
+    }
+    setError(null)
+    setDraft(normalized)
+    onChange(normalized)
+  }
+
+  return (
+    <label className="color-field">
+      <span>{label}</span>
+      <span className="color-field-control">
+        <span className={`color-input${error ? ' invalid' : ''}`}>
+          <input
+            aria-label={label}
+            type="color"
+            value={value}
+            onChange={(event) => commit(event.target.value)}
+          />
+          <input
+            aria-label={`${label} HEX`}
+            aria-invalid={error ? true : undefined}
+            value={draft}
+            spellCheck={false}
+            placeholder="#000000"
+            onChange={(event) => { setDraft(event.target.value); setError(null) }}
+            onBlur={(event) => commit(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') commit(event.currentTarget.value)
+              if (event.key === 'Escape') { setDraft(value); setError(null) }
+            }}
+          />
+        </span>
+        {error && <span className="color-field-error" role="alert">{error}</span>}
+      </span>
+    </label>
+  )
 }
 
 function ScaleControl({ label, hint, values, field, onChange }: { label: string; hint: string; values: number[]; field: 'radiusScale' | 'spacingScale' | 'typeScale'; onChange: (field: 'radiusScale' | 'spacingScale' | 'typeScale', index: number, value: number) => void }) {

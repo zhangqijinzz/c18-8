@@ -50,6 +50,29 @@ describe('BrandMirrorViewModel', () => {
     expect(viewModel.getSnapshot().tokens.secondary).toBe('#FFFFFF')
   })
 
+  it('rejects an invalid color with a clear message, keeps the last valid value and never persists it', () => {
+    const repository = new MemoryRepository()
+    const viewModel = new BrandMirrorViewModel(repository)
+    viewModel.initialize()
+    const previousSecondary = viewModel.getSnapshot().tokens.secondary
+    const previousPrimary = viewModel.getSnapshot().tokens.primary
+
+    viewModel.updateColor('secondary', 'pasted-not-a-color')
+
+    // 辅助色不能被换成主色红，必须保留上一个有效值
+    expect(viewModel.getSnapshot().tokens.secondary).toBe(previousSecondary)
+    expect(viewModel.getSnapshot().tokens.secondary).not.toBe(previousPrimary)
+    expect(viewModel.getSnapshot().status).toBe('error')
+    expect(viewModel.getSnapshot().message).toContain('HEX')
+    // 未确认的值绝不落盘（initialize 无存档时 repository 仍为空）
+    expect(repository.document).toBeNull()
+
+    // 随后输入合法值应恢复正常更新与持久化
+    viewModel.updateColor('secondary', '2a6bff')
+    expect(viewModel.getSnapshot().tokens.secondary).toBe('#2A6BFF')
+    expect(repository.document?.tokens.secondary).toBe('#2A6BFF')
+  })
+
   it('recovers a previously persisted document on initialization', () => {
     const repository = new MemoryRepository()
     repository.document = { version: 1, theme: 'night', tokens: { primary: '#A98BFF', secondary: '#191829', radiusScale: [6, 10, 14, 22], spacingScale: [4, 8, 12, 18, 28], typeScale: [12, 14, 16, 20, 28, 38] }, versions: [] }

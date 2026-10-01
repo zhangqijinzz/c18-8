@@ -41,6 +41,17 @@ export class BrandMirrorViewModel {
 
   updateColor(field: 'primary' | 'secondary', value: string): void {
     const color = normalizeColor(value)
+    if (!color) {
+      // 不合规：明确提示并退回上一个有效值，不修改令牌、不写入本地存储
+      const label = field === 'primary' ? '主色' : '辅助色'
+      this.snapshot = { ...this.snapshot, status: 'error', message: `${label}需为 6 位 HEX 颜色（如 #2A6BFF），已保留上一次的有效值` }
+      this.emit()
+      return
+    }
+    if (this.snapshot.tokens[field] === color) {
+      // 值未变化（例如确认了未修改的内容）：无需更新也无需落盘
+      return
+    }
     this.update({ tokens: { ...this.snapshot.tokens, [field]: color } }, '令牌已更新')
   }
 
