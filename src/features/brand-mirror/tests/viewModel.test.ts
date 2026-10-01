@@ -50,6 +50,41 @@ describe('BrandMirrorViewModel', () => {
     expect(viewModel.getSnapshot().tokens.secondary).toBe('#FFFFFF')
   })
 
+  it('rejects an invalid color without touching tokens or storage', () => {
+    const repository = new MemoryRepository()
+    const viewModel = new BrandMirrorViewModel(repository)
+    viewModel.initialize()
+    viewModel.updateColor('primary', '#123456')
+    const persisted = repository.document
+    viewModel.updateColor('secondary', 'not-a-color')
+    const snapshot = viewModel.getSnapshot()
+    expect(snapshot.tokens.secondary).toBe('#24324A')
+    expect(snapshot.tokens.primary).toBe('#123456')
+    expect(snapshot.message).toContain('HEX')
+    expect(snapshot.message).toContain('辅助色')
+    expect(snapshot.message).toContain('#24324A')
+    expect(repository.document).toBe(persisted)
+  })
+
+  it('never falls back to the primary color when the secondary color is invalid', () => {
+    const repository = new MemoryRepository()
+    const viewModel = new BrandMirrorViewModel(repository)
+    viewModel.initialize()
+    viewModel.updateColor('secondary', '')
+    viewModel.updateColor('secondary', '#FFF')
+    expect(viewModel.getSnapshot().tokens.secondary).toBe('#24324A')
+    expect(repository.document).toBeNull()
+  })
+
+  it('normalizes and persists a confirmed valid color', () => {
+    const repository = new MemoryRepository()
+    const viewModel = new BrandMirrorViewModel(repository)
+    viewModel.initialize()
+    viewModel.updateColor('secondary', '  #a1b2c3 ')
+    expect(viewModel.getSnapshot().tokens.secondary).toBe('#A1B2C3')
+    expect(repository.document?.tokens.secondary).toBe('#A1B2C3')
+  })
+
   it('recovers a previously persisted document on initialization', () => {
     const repository = new MemoryRepository()
     repository.document = { version: 1, theme: 'night', tokens: { primary: '#A98BFF', secondary: '#191829', radiusScale: [6, 10, 14, 22], spacingScale: [4, 8, 12, 18, 28], typeScale: [12, 14, 16, 20, 28, 38] }, versions: [] }

@@ -41,6 +41,13 @@ export class BrandMirrorViewModel {
 
   updateColor(field: 'primary' | 'secondary', value: string): void {
     const color = normalizeColor(value)
+    if (!color) {
+      const label = field === 'primary' ? '主色' : '辅助色'
+      const kept = this.snapshot.tokens[field]
+      this.snapshot = { ...this.snapshot, status: 'editing', message: `“${value.trim()}” 不是有效的 6 位 HEX 颜色，已保留${label} ${kept}` }
+      this.emit()
+      return
+    }
     this.update({ tokens: { ...this.snapshot.tokens, [field]: color } }, '令牌已更新')
   }
 

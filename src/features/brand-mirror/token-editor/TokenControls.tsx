@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { BrandMirrorSnapshot, BrandTheme } from '../models/brandMirrorModels'
 
 interface TokenControlsProps {
@@ -41,8 +42,8 @@ export function TokenControls({ snapshot, onThemeChange, onColorChange, onScaleC
       <section className="control-section">
         <div className="section-label"><span>品牌色</span><span className="muted">HEX / 6 位</span></div>
         <div className="color-fields">
-          <ColorField label="主色" value={snapshot.tokens.primary} onChange={(value) => onColorChange('primary', value)} />
-          <ColorField label="辅助色" value={snapshot.tokens.secondary} onChange={(value) => onColorChange('secondary', value)} />
+          <ColorField label="主色" value={snapshot.tokens.primary} onCommit={(value) => onColorChange('primary', value)} />
+          <ColorField label="辅助色" value={snapshot.tokens.secondary} onCommit={(value) => onColorChange('secondary', value)} />
         </div>
         <div className={`contrast-note ${snapshot.contrastWarning ? 'warning' : ''}`}>
           <span className="contrast-icon">◐</span>
@@ -59,8 +60,50 @@ export function TokenControls({ snapshot, onThemeChange, onColorChange, onScaleC
   )
 }
 
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="color-field"><span>{label}</span><div className="color-input"><input aria-label={label} type="color" value={value} onChange={(event) => onChange(event.target.value)} /><input aria-label={`${label} HEX`} value={value} onChange={(event) => onChange(event.target.value)} /></div></label>
+function ColorField({ label, value, onCommit }: { label: string; value: string; onCommit: (value: string) => void }) {
+  // 编辑中只动本地草稿，确认（失焦 / 回车）后才把值交给上层校验；未确认的值不会触达令牌和本地存储
+  const [draft, setDraft] = useState(value)
+  const [editing, setEditing] = useState(false)
+  const cancelledRef = useRef(false)
+
+  useEffect(() => {
+    if (!editing) setDraft(value)
+  }, [editing, value])
+
+  const handleBlur = () => {
+    setEditing(false)
+    if (cancelledRef.current) {
+      cancelledRef.current = false
+      setDraft(value)
+      return
+    }
+    if (draft.trim().toUpperCase() !== value) onCommit(draft)
+  }
+
+  return (
+    <label className="color-field">
+      <span>{label}</span>
+      <div className="color-input">
+        <input aria-label={label} type="color" value={value} onChange={(event) => onCommit(event.target.value)} />
+        <input
+          aria-label={`${label} HEX`}
+          value={editing ? draft : value}
+          onFocus={() => { cancelledRef.current = false; setDraft(value); setEditing(true) }}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              event.currentTarget.blur()
+            } else if (event.key === 'Escape') {
+              cancelledRef.current = true
+              event.currentTarget.blur()
+            }
+          }}
+        />
+      </div>
+    </label>
+  )
 }
 
 function ScaleControl({ label, hint, values, field, onChange }: { label: string; hint: string; values: number[]; field: 'radiusScale' | 'spacingScale' | 'typeScale'; onChange: (field: 'radiusScale' | 'spacingScale' | 'typeScale', index: number, value: number) => void }) {

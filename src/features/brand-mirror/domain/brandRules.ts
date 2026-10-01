@@ -1,5 +1,5 @@
 import type { BrandTheme, BrandTokens } from '../models/brandMirrorModels'
-import { INITIAL_TOKENS, THEME_PRESETS } from '../models/brandMirrorModels'
+import { THEME_PRESETS } from '../models/brandMirrorModels'
 
 const HEX_COLOR = /^#[0-9A-F]{6}$/i
 
@@ -11,9 +11,9 @@ export function isHexColor(value: string): boolean {
   return HEX_COLOR.test(value)
 }
 
-export function normalizeColor(value: string): string {
+export function normalizeColor(value: string): string | null {
   const candidate = value.trim().toUpperCase()
-  return isHexColor(candidate) ? candidate : INITIAL_TOKENS.primary
+  return isHexColor(candidate) ? candidate : null
 }
 
 export function clampTokenValues(tokens: BrandTokens): BrandTokens {
